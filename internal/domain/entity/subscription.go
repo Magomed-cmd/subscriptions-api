@@ -1,12 +1,16 @@
 package entity
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Subscription struct {
 	ID          int64      `db:"id"`
 	ServiceName string     `db:"service_name"`
 	Price       int64      `db:"price"`
-	UserID      string     `db:"user_id"`
+	UserID      uuid.UUID  `db:"user_id"`
 	StartDate   time.Time  `db:"start_date"`
 	EndDate     *time.Time `db:"end_date"`
 	CreatedAt   time.Time  `db:"created_at"`
@@ -14,7 +18,7 @@ type Subscription struct {
 }
 
 type SubscriptionFilter struct {
-	UserID      *string
+	UserID      *uuid.UUID
 	ServiceName *string
 	StartDate   *time.Time
 	EndDate     *time.Time

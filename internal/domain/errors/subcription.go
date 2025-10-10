@@ -11,6 +11,7 @@ var (
 	ErrNotFound            = errors.New("record not found")
 	ErrDuplicate           = errors.New("duplicate record")
 	ErrInvalidInput        = errors.New("invalid input data")
+	ErrInvalidArgument     = errors.New("invalid argument")
 	ErrNullViolation       = errors.New("null value not allowed")
 	ErrCheckViolation      = errors.New("check constraint violated")
 	ErrInvalidUUID         = errors.New("invalid UUID format")

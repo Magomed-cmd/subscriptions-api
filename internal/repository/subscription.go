@@ -26,7 +26,7 @@ func NewSubscriptionRepository(db *pgxpool.Pool, logger *zap.Logger) *Subscripti
 	}
 }
 
-func (r *SubscriptionRepository) Create(ctx context.Context, sub *entity.Subscription) (int, error) {
+func (r *SubscriptionRepository) Create(ctx context.Context, sub *entity.Subscription) (int64, error) {
 	r.logger.Info("Creating subscription")
 
 	query := `
@@ -35,7 +35,7 @@ func (r *SubscriptionRepository) Create(ctx context.Context, sub *entity.Subscri
 		RETURNING id
 	`
 
-	var id int
+	var id int64
 	if err := r.db.QueryRow(ctx, query,
 		sub.ServiceName,
 		sub.Price,
@@ -122,6 +122,7 @@ func (r *SubscriptionRepository) Update(ctx context.Context, sub *entity.Subscri
 		r.logger.Warn("subscription not found for update", zap.Int64("id", sub.ID))
 		return errors2.ErrNotFound
 	}
+	r.logger.Info("subscription updated successfully", zap.Int64("id", sub.ID))
 
 	return nil
 }
@@ -178,7 +179,7 @@ func (r *SubscriptionRepository) List(ctx context.Context, filters *entity.Subsc
 	}
 	defer rows.Close()
 
-	var subs []entity.Subscription
+	subs := make([]entity.Subscription, 0)
 	for rows.Next() {
 		var s entity.Subscription
 		if err := rows.Scan(
