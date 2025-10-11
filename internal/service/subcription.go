@@ -77,6 +77,10 @@ func (s *SubscriptionService) Update(ctx context.Context, id int64, req *dto.Upd
 		return nil, errors2.ErrInvalidInput
 	}
 
+	if req.ServiceName == nil && req.Price == nil && req.EndDate == nil {
+		return nil, errors2.ErrNothingToUpdate
+	}
+
 	existing, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return nil, err

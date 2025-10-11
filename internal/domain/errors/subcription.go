@@ -18,6 +18,7 @@ var (
 	ErrInvalidDateFormat   = errors.New("invalid date format")
 	ErrForeignKeyViolation = errors.New("foreign key constraint violated")
 	ErrInternal            = errors.New("internal server error")
+	ErrNothingToUpdate     = errors.New("nothing to update")
 )
 
 var pgErrorMap = map[string]error{
