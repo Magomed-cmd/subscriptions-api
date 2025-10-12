@@ -6,7 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// Доменные ошибки
 var (
 	ErrNotFound            = errors.New("record not found")
 	ErrDuplicate           = errors.New("duplicate record")

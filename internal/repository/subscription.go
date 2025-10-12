@@ -213,6 +213,8 @@ func (r *SubscriptionRepository) TotalAmount(ctx context.Context, filters *entit
 		return 0, errors2.ErrInternal
 	}
 
+	r.logger.Debug("Executing SQL", zap.String("sql", sql), zap.Any("args", args))
+
 	var total int64
 	if err := r.db.QueryRow(ctx, sql, args...).Scan(&total); err != nil {
 		mapped := errors2.MapPgError(err)
@@ -239,11 +241,15 @@ func applySubscriptionFilters(query squirrel.SelectBuilder, f *entity.Subscripti
 	if f.ServiceName != nil {
 		query = query.Where(squirrel.Eq{"service_name": *f.ServiceName})
 	}
-	if f.StartDate != nil {
-		query = query.Where(squirrel.GtOrEq{"start_date": *f.StartDate})
-	}
-	if f.EndDate != nil {
-		query = query.Where(squirrel.LtOrEq{"end_date": *f.EndDate})
+	if f.StartDate != nil && f.EndDate != nil {
+		query = query.Where(squirrel.And{
+			squirrel.LtOrEq{"start_date": *f.EndDate},
+			squirrel.GtOrEq{"end_date": *f.StartDate},
+		})
+	} else if f.StartDate != nil {
+		query = query.Where(squirrel.LtOrEq{"start_date": *f.EndDate})
+	} else if f.EndDate != nil {
+		query = query.Where(squirrel.GtOrEq{"end_date": *f.StartDate})
 	}
 
 	return query

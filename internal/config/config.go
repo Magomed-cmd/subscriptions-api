@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"log"
+	"net"
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -30,7 +32,10 @@ type Config struct {
 
 func LoadConfig(configPath string) (*Config, error) {
 	v := viper.New()
-	v.SetConfigName("config")
+
+	configName := detectEnvironment()
+
+	v.SetConfigName(configName)
 	v.AddConfigPath(configPath)
 	v.SetConfigType("yaml")
 
@@ -47,8 +52,28 @@ func LoadConfig(configPath string) (*Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	log.Printf("Config loaded from %s", v.ConfigFileUsed())
+	log.Printf("Config loaded from %s (detected environment: %s)", v.ConfigFileUsed(), configName)
 	return &cfg, nil
+}
+
+func detectEnvironment() string {
+
+	hostname, _ := os.Hostname()
+
+	if strings.Contains(hostname, "subscriptions") {
+		return "config.docker"
+	}
+
+	if canResolve("postgres") {
+		return "config.docker"
+	}
+
+	return "config.local"
+}
+
+func canResolve(host string) bool {
+	_, err := net.LookupHost(host)
+	return err == nil
 }
 
 func (p *Config) GetDSN() string {

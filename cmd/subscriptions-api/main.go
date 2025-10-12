@@ -1,3 +1,8 @@
+// @title Subscriptions API
+// @version 1.0
+// @description REST API для управления подписками пользователей
+// @host localhost:8080
+// @BasePath /api/v1
 package main
 
 import (
@@ -7,9 +12,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	_ "subscriptions-api/docs"
 	"subscriptions-api/internal/config"
 	"subscriptions-api/internal/db/postgres"
+	"subscriptions-api/internal/handler"
 	"subscriptions-api/internal/logger"
+	"subscriptions-api/internal/repository"
+	"subscriptions-api/internal/router"
+	"subscriptions-api/internal/service"
 	"syscall"
 	"time"
 
@@ -18,7 +28,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.LoadConfig(".")
+	cfg, err := config.LoadConfig("./configs")
 	if err != nil {
 		panic("failed to load config")
 	}
@@ -35,7 +45,14 @@ func main() {
 	}
 	defer db.Close()
 
+	repo := repository.NewSubscriptionRepository(db, log)
+	svc := service.NewSubscriptionService(repo, log)
+	subHandler := handler.NewSubscriptionHandler(svc, log)
+
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
+	router.InitRoutes(r, subHandler)
+
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{Addr: addr, Handler: r}
 
@@ -49,8 +66,8 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Info("shutting down server...")
 
+	log.Info("shutting down server...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {

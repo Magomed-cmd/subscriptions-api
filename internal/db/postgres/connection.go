@@ -22,6 +22,6 @@ func NewConnection(dsn string, logger *zap.Logger) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 
-	logger.Info("PostgreSQL connection established")
+	logger.Info("PostgresSQL connection established")
 	return dbPool, nil
 }

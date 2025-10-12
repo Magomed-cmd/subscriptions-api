@@ -31,7 +31,8 @@ func mapErrorToResponse(err error) (int, string) {
 		errors.Is(err, errors2.ErrCheckViolation),
 		errors.Is(err, errors2.ErrInvalidUUID),
 		errors.Is(err, errors2.ErrInvalidDateFormat),
-		errors.Is(err, errors2.ErrForeignKeyViolation):
+		errors.Is(err, errors2.ErrForeignKeyViolation),
+		errors.Is(err, errors2.ErrNothingToUpdate):
 		return http.StatusBadRequest, "invalid request data"
 
 	case errors.Is(err, errors2.ErrDuplicate):
