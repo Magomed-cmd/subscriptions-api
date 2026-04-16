@@ -33,9 +33,9 @@ migrate-version:
 	$(MIGRATE_CMD) version
 
 docker-run:
-	docker compose down -v
-	docker compose build --no-cache
-	docker compose up
+	docker compose -f docker-compose.yml down -v
+	docker compose -f docker-compose.yml build --no-cache
+	docker compose -f docker-compose.yml up
 
 generate-swagger:
 	swag init -g cmd/subscriptions-api/main.go -o docs/swagger

@@ -1,0 +1,58 @@
+@startuml
+
+title Subscriptions API - Layered Architecture
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam classAttributeIconSize 0
+skinparam classFontSize 14
+skinparam classFontStyle bold
+skinparam classStereotypeFontSize 12
+skinparam classStereotypeFontStyle italic
+skinparam ArrowColor #444444
+skinparam ArrowThickness 1.5
+skinparam dpi 150
+skinparam nodesep 40
+skinparam ranksep 60
+hide circle
+
+skinparam rectangle {
+  RoundCorner 12
+}
+
+skinparam packageStyle rectangle
+
+package "Delivery" {
+  rectangle "Gin Router\ninternal/router" as Router <<concrete>>
+  rectangle "Subscription Handler\ninternal/handler" as Handler <<concrete>>
+}
+
+package "Application" {
+  interface "SubscriptionService\n(contract in handler)" as SvcPort <<interface>>
+  rectangle "SubscriptionService\ninternal/service" as Service <<concrete>>
+}
+
+package "Domain" {
+  rectangle "Subscription\nSubscriptionFilter\ninternal/domain/entity" as DomainEntity <<concrete>>
+  rectangle "Domain Errors\ninternal/domain/errors" as DomainErrors <<concrete>>
+}
+
+package "Infrastructure" {
+  interface "SubscriptionRepository\n(contract in service)" as RepoPort <<interface>>
+  rectangle "SubscriptionRepository\ninternal/repository" as Repo <<concrete>>
+  database "PostgreSQL" as DB
+}
+
+Router --> Handler : HTTP routes
+Handler --> SvcPort : calls
+SvcPort <|.. Service : implements
+Service --> RepoPort : uses
+RepoPort <|.. Repo : implements
+Repo --> DB : SQL (pgx + squirrel)
+
+Service --> DomainEntity : business rules
+Service --> DomainErrors : mapped errors
+Repo --> DomainEntity : persistence mapping
+Repo --> DomainErrors : pg error mapping
+
+@enduml

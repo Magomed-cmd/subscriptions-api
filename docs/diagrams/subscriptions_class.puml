@@ -1,0 +1,126 @@
+@startuml
+
+title Subscriptions API - Class Diagram (Core Flow)
+
+skinparam defaultFontName Arial
+skinparam defaultFontSize 13
+skinparam classAttributeIconSize 0
+skinparam classFontSize 14
+skinparam classFontStyle bold
+skinparam classStereotypeFontSize 12
+skinparam classStereotypeFontStyle italic
+skinparam ArrowColor #444444
+skinparam ArrowThickness 1.5
+skinparam dpi 150
+skinparam nodesep 40
+skinparam ranksep 60
+hide circle
+
+skinparam class {
+  BackgroundColor<<interface>> #E1F5EE
+  BorderColor<<interface>>     #0F6E56
+  HeaderBackgroundColor<<interface>> #9FE1CB
+
+  BackgroundColor<<concrete>>  #EEEDFE
+  BorderColor<<concrete>>      #534AB7
+  HeaderBackgroundColor<<concrete>>  #CECBF6
+
+  BackgroundColor<<entity>>    #FAECE7
+  BorderColor<<entity>>        #993C1D
+  HeaderBackgroundColor<<entity>> #F5C4B3
+
+  BackgroundColor<<dto>>       #FFF8D9
+  BorderColor<<dto>>           #9A7B00
+  HeaderBackgroundColor<<dto>> #FFE9A8
+}
+
+interface ISubscriptionService <<interface>> {
+  + Create(ctx, req): SubscriptionResponse
+  + GetByID(ctx, id): SubscriptionResponse
+  + Update(ctx, id, req): SubscriptionResponse
+  + Delete(ctx, id): error
+  + List(ctx, filter): []SubscriptionResponse
+  + TotalCostForPeriod(ctx, req): int64
+}
+
+class SubscriptionHandler <<concrete>> {
+  - svc: ISubscriptionService
+  + Create(c)
+  + GetByID(c)
+  + Update(c)
+  + Delete(c)
+  + List(c)
+  + TotalCostForPeriod(c)
+}
+
+interface ISubscriptionRepository <<interface>> {
+  + Create(ctx, sub): int64
+  + GetByID(ctx, id): Subscription
+  + Update(ctx, sub): error
+  + Delete(ctx, id): error
+  + List(ctx, filter): []Subscription
+  + TotalAmount(ctx, filter): int64
+}
+
+class SubscriptionService <<concrete>> {
+  - repo: ISubscriptionRepository
+  + Create(ctx, req): SubscriptionResponse
+  + GetByID(ctx, id): SubscriptionResponse
+  + Update(ctx, id, req): SubscriptionResponse
+  + Delete(ctx, id): error
+  + List(ctx, filter): []SubscriptionResponse
+  + TotalCostForPeriod(ctx, req): int64
+}
+
+class SubscriptionRepository <<concrete>> {
+  - db: pgxpool.Pool
+  - psql: squirrel.StatementBuilderType
+  + Create(ctx, sub): int64
+  + GetByID(ctx, id): Subscription
+  + Update(ctx, sub): error
+  + Delete(ctx, id): error
+  + List(ctx, filter): []Subscription
+  + TotalAmount(ctx, filter): int64
+}
+
+class Subscription <<entity>> {
+  + ID: int64
+  + ServiceName: string
+  + Price: int64
+  + UserID: uuid.UUID
+  + StartDate: time.Time
+  + EndDate: *time.Time
+  + CreatedAt: time.Time
+  + UpdatedAt: time.Time
+}
+
+class SubscriptionFilter <<entity>> {
+  + UserID: *uuid.UUID
+  + ServiceName: *string
+  + StartDate: *time.Time
+  + EndDate: *time.Time
+}
+
+class CreateSubscriptionRequest <<dto>>
+class UpdateSubscriptionRequest <<dto>>
+class SubscriptionFilterRequest <<dto>>
+class TotalCostRequest <<dto>>
+class SubscriptionResponse <<dto>>
+
+ISubscriptionService <|.. SubscriptionService : implements
+ISubscriptionRepository <|.. SubscriptionRepository : implements
+
+ISubscriptionService <-- SubscriptionHandler : depends on
+ISubscriptionRepository <-- SubscriptionService : depends on
+
+SubscriptionService --> Subscription : uses
+SubscriptionService --> SubscriptionFilter : uses
+SubscriptionService --> CreateSubscriptionRequest : input
+SubscriptionService --> UpdateSubscriptionRequest : input
+SubscriptionService --> TotalCostRequest : input
+SubscriptionService --> SubscriptionResponse : output
+
+SubscriptionRepository --> Subscription : persists
+SubscriptionRepository --> SubscriptionFilter : applies filters
+
+@enduml

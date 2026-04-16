@@ -1,181 +1,236 @@
 # Subscriptions API
 
-REST API для управления подписками пользователей, написанный на Go с использованием Gin, PostgreSQL и принципов Clean Architecture.
+Production-style REST API для управления подписками пользователей.
 
-## Описание проекта
+Стек: `Go` + `Gin` + `PostgreSQL` + `pgx` + `squirrel` + `zap` + `swaggo`.
 
-Сервис предоставляет полный CRUD для управления платными подписками: создание, получение, обновление, удаление, фильтрация по пользователю/сервису и подсчёт суммарной стоимости за период.
+## Contents
+
+- [Что умеет сервис](#что-умеет-сервис)
+- [Архитектура](#архитектура)
+- [Диаграммы](#диаграммы)
+- [Структура проекта](#структура-проекта)
+- [Быстрый старт](#быстрый-старт)
+- [Конфигурация](#конфигурация)
+- [API](#api)
+- [Примеры запросов](#примеры-запросов)
+- [Команды Makefile](#команды-makefile)
+- [Технологии](#технологии)
+
+## Что умеет сервис
+
+- CRUD подписок: создать, получить, обновить, удалить.
+- Фильтрация списка подписок по `user_id` и `service_name`.
+- Подсчёт суммарной стоимости подписок за период.
+- Swagger UI для интерактивного тестирования API.
+- Централизованный маппинг ошибок БД в доменные ошибки.
 
 ## Архитектура
 
-Проект следует **многоуровневой архитектуре** с чётким разделением ответственности:
+Сервис построен по многослойной архитектуре с разделением ответственности:
 
-```text
-┌──────────────────────────────┐
-│        Handler Layer         │
-│  (HTTP, validation, routing) │
-└──────────┬───────────────────┘
-           │
-┌──────────▼───────────────────┐
-│        Service Layer         │
-│    (Business logic, rules)   │
-└──────────┬───────────────────┘
-           │
-┌──────────▼───────────────────┐
-│      Repository Layer        │
-│  (Database, query building)  │
-└──────────┬───────────────────┘
-           │
-┌──────────▼───────────────────┐
-│         PostgreSQL           │
-└──────────────────────────────┘
-```
+- `handler`:
+  - HTTP-уровень, парсинг/валидация request, формирование response.
+- `service`:
+  - бизнес-правила и оркестрация use-case.
+- `repository`:
+  - работа с PostgreSQL и SQL-конструирование через `squirrel`.
+- `domain`:
+  - сущности и доменные ошибки.
+
+Зависимости направлены сверху вниз:
+
+`handler -> service -> repository -> postgres`
+
+## Диаграммы
+
+Архитектурные UML-диаграммы лежат в `docs/diagrams`:
+
+- Архитектура слоёв:
+  - [subscriptions_architecture.svg](docs/diagrams/subscriptions_architecture.svg)
+- Классы/контракты:
+  - [subscriptions_class.svg](docs/diagrams/subscriptions_class.svg)
+### Preview
+
+![Architecture](docs/diagrams/subscriptions_architecture.svg)
+
+![Class Diagram](docs/diagrams/subscriptions_class.svg)
 
 ## Структура проекта
 
 ```text
 subscriptions-api/
-├── cmd/subscriptions-api/     # Точка входа, graceful shutdown
+├── cmd/subscriptions-api/     # entrypoint, graceful shutdown
+├── configs/                   # YAML конфиги (local/docker)
+├── docs/
+│   ├── swagger/               # OpenAPI/Swagger
+│   └── diagrams/              # PlantUML + SVG диаграммы
 ├── internal/
-│   ├── config/                # Конфигурация (Viper, YAML)
-│   ├── db/postgres/           # Подключение к БД (pgxpool)
+│   ├── config/                # загрузка конфигурации
+│   ├── db/postgres/           # pgxpool connection
 │   ├── domain/
-│   │   ├── entity/            # Доменные сущности
-│   │   └── errors/            # Доменные ошибки + маппинг PG-кодов
-│   ├── dto/                   # Request/Response объекты, конвертация
-│   ├── handler/               # HTTP-хендлеры (Gin), интерфейс сервиса
-│   ├── repository/            # SQL-запросы (squirrel query builder)
-│   ├── router/                # Регистрация маршрутов
-│   └── service/               # Бизнес-логика, валидация
-├── configs/                   # YAML конфигурации (local/docker)
-├── docs/swagger/              # Swagger/OpenAPI сгенерированные файлы
-├── migrations/                # SQL миграции (golang-migrate)
-├── docker-compose.yml
+│   │   ├── entity/            # Subscription, SubscriptionFilter
+│   │   └── errors/            # доменные ошибки + map PG errors
+│   ├── dto/                   # request/response + mapper'ы
+│   ├── handler/               # Gin handlers
+│   ├── logger/                # zap logger
+│   ├── repository/            # SQL + persistence
+│   ├── router/                # route registration
+│   └── service/               # business logic
+├── migrations/                # SQL миграции
 ├── Dockerfile
+├── docker-compose.yml
 ├── Makefile
 └── .env.example
 ```
 
 ## Быстрый старт
 
-### Требования
+### Вариант 1: Docker (рекомендуется)
 
-- Docker и Docker Compose
-- `golang-migrate` для миграций
+1. Подготовь окружение:
+
+```bash
+cp .env.example .env
+```
+
+2. Подними контейнеры:
+
+```bash
+make docker-run
+```
+
+3. Накати миграции:
+
+```bash
+make migrate-up
+```
+
+4. Проверь сервис:
+
+- API: `http://localhost:8080`
+- Health: `http://localhost:8080/health`
+- Swagger: `http://localhost:8080/swagger/index.html`
+
+### Вариант 2: Локальный запуск
+
+Требуется локальный PostgreSQL и утилита `migrate`.
 
 ```bash
 # macOS
 brew install golang-migrate
 
-# Linux
-curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.0/migrate.linux-amd64.tar.gz | tar xvz
-sudo mv migrate /usr/local/bin/
-```
+# запуск API
+go run cmd/subscriptions-api/main.go
 
-### Установка и запуск
-
-1. **Клонируйте репозиторий**
-
-   ```bash
-   git clone <repository-url>
-   cd subscriptions-api
-   ```
-
-2. **Настройте переменные окружения**
-
-   ```bash
-   cp .env.example .env
-   ```
-
-3. **Запустите Docker-контейнеры**
-
-   ```bash
-   make docker-run
-   ```
-
-4. **Примените миграции**
-
-   ```bash
-   make migrate-up
-   ```
-
-5. **Готово**
-
-   - API: [http://localhost:8080](http://localhost:8080)
-   - Swagger UI: [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html)
-
-## API Endpoints
-
-| Метод | Путь | Описание |
-| ----- | ---- | -------- |
-| `POST` | `/api/v1/subscriptions` | Создать подписку |
-| `GET` | `/api/v1/subscriptions` | Список подписок (с фильтрами) |
-| `GET` | `/api/v1/subscriptions/:id` | Получить подписку по ID |
-| `PUT` | `/api/v1/subscriptions/:id` | Обновить подписку |
-| `DELETE` | `/api/v1/subscriptions/:id` | Удалить подписку |
-| `GET` | `/api/v1/subscriptions/total` | Суммарная стоимость за период |
-| `GET` | `/health` | Статус сервиса |
-
-### Параметры фильтрации (GET /subscriptions)
-
-| Параметр | Тип | Описание |
-| -------- | --- | -------- |
-| `user_id` | UUID | Фильтр по пользователю |
-| `service_name` | string | Фильтр по названию сервиса |
-| `start_date` | `2006-01-02` | Дата начала диапазона |
-| `end_date` | `2006-01-02` | Дата конца диапазона |
-
-### Параметры подсчёта стоимости (GET /subscriptions/total)
-
-| Параметр | Тип | Обязательный | Описание |
-| -------- | --- | ------------ | -------- |
-| `period_start` | `2006-01-02T15:04:05Z` | Да | Начало периода |
-| `period_end` | `2006-01-02T15:04:05Z` | Да | Конец периода |
-| `user_id` | UUID | Нет | Фильтр по пользователю |
-| `service_name` | string | Нет | Фильтр по сервису |
-
-## Доступные команды
-
-```bash
-# Запуск
-make run              # Локально (требует локальную БД)
-make docker-run       # В Docker
-
-# Сборка
-make build            # Собрать бинарник
-
-# Качество кода
-make fmt              # go fmt
-make vet              # go vet
-
-# Миграции
-make migrate-up       # Применить миграции
-make migrate-down     # Откатить миграции
-make migrate-version  # Текущая версия
-make migrate-force V=1  # Принудительно установить версию
-
-# Документация
-make generate-swagger # Обновить Swagger docs
+# миграции
+make migrate-up
 ```
 
 ## Конфигурация
 
-Конфиг выбирается автоматически по окружению:
+Источник конфигурации:
 
-- **Docker**: `configs/config.docker.yaml`
-- **Локально**: `configs/config.local.yaml`
+- Docker: `configs/config.docker.yaml`
+- Локально: `configs/config.local.yaml`
 
-Переменные окружения переопределяют значения из YAML-файлов с префиксом `APP_`.
+Важные переменные `.env`:
 
-## Stack технологий
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_PORT`
+- `APP_PORT`
 
-- **Язык**: Go 1.25
-- **Framework**: Gin
-- **БД**: PostgreSQL 16
-- **Драйвер БД**: pgx v5 + pgxpool
-- **Query builder**: squirrel
-- **Конфигурация**: Viper
-- **Логирование**: Uber Zap
-- **Миграции**: golang-migrate
-- **API Docs**: Swagger/OpenAPI (swaggo)
-- **Контейнеризация**: Docker, Docker Compose
+Пример `.env` уже есть в `.env.example`.
+
+## API
+
+Base URL: `http://localhost:8080/api/v1`
+
+| Метод | Путь | Описание |
+| ----- | ---- | -------- |
+| `POST` | `/subscriptions` | Создать подписку |
+| `GET` | `/subscriptions` | Получить список подписок |
+| `GET` | `/subscriptions/{id}` | Получить подписку по ID |
+| `PUT` | `/subscriptions/{id}` | Обновить подписку |
+| `DELETE` | `/subscriptions/{id}` | Удалить подписку |
+| `GET` | `/subscriptions/total` | Суммарная стоимость за период |
+
+Дополнительно:
+
+- `GET /health`
+- `GET /swagger/index.html`
+
+## Примеры запросов
+
+### Create
+
+```bash
+curl -X POST 'http://localhost:8080/api/v1/subscriptions' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "service_name": "Netflix",
+    "price": 499,
+    "user_id": "60601fee-2bf1-4721-ae6f-7636e79a0cba",
+    "start_date": "2025-07-01T00:00:00Z"
+  }'
+```
+
+### List with filters
+
+```bash
+curl 'http://localhost:8080/api/v1/subscriptions?user_id=60601fee-2bf1-4721-ae6f-7636e79a0cba&service_name=Netflix'
+```
+
+### Total for period
+
+```bash
+curl 'http://localhost:8080/api/v1/subscriptions/total?period_start=2025-10-01T00:00:00Z&period_end=2025-12-31T23:59:59Z&user_id=60601fee-2bf1-4721-ae6f-7636e79a0cba'
+```
+
+### Update
+
+```bash
+curl -X PUT 'http://localhost:8080/api/v1/subscriptions/1' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "service_name": "Yandex Plus",
+    "price": 599
+  }'
+```
+
+### Delete
+
+```bash
+curl -X DELETE 'http://localhost:8080/api/v1/subscriptions/1'
+```
+
+## Команды Makefile
+
+```bash
+make run               # запустить локально
+make build             # собрать бинарник
+make fmt               # go fmt
+make vet               # go vet
+
+make migrate-up        # применить миграции
+make migrate-down      # откатить миграции
+make migrate-version   # показать текущую версию
+make migrate-force V=1 # принудительно установить версию
+
+make docker-run        # docker compose down -v && build && up
+make generate-swagger  # регенерация swagger
+```
+
+## Технологии
+
+- Go 1.25
+- Gin
+- PostgreSQL 16
+- pgx / pgxpool
+- squirrel
+- Viper
+- zap
+- swaggo
+- Docker / Docker Compose
