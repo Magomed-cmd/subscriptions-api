@@ -1,35 +1,32 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strconv"
-	errors2 "subscriptions-api/internal/domain/errors"
+	domainerrors "subscriptions-api/internal/domain/errors"
 	"subscriptions-api/internal/dto"
-	"subscriptions-api/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
+type SubscriptionService interface {
+	Create(ctx context.Context, req *dto.CreateSubscriptionRequest) (*dto.SubscriptionResponse, error)
+	GetByID(ctx context.Context, id int64) (*dto.SubscriptionResponse, error)
+	Update(ctx context.Context, id int64, req *dto.UpdateSubscriptionRequest) (*dto.SubscriptionResponse, error)
+	Delete(ctx context.Context, id int64) error
+	List(ctx context.Context, filterReq *dto.SubscriptionFilterRequest) ([]dto.SubscriptionResponse, error)
+	TotalCostForPeriod(ctx context.Context, req *dto.TotalCostRequest) (int64, error)
+}
+
 type SubscriptionHandler struct {
-	svc    *service.SubscriptionService
+	svc    SubscriptionService
 	logger *zap.Logger
 }
 
-func NewSubscriptionHandler(svc *service.SubscriptionService, logger *zap.Logger) *SubscriptionHandler {
+func NewSubscriptionHandler(svc SubscriptionService, logger *zap.Logger) *SubscriptionHandler {
 	return &SubscriptionHandler{svc: svc, logger: logger}
-}
-
-func (h *SubscriptionHandler) RegisterRoutes(r *gin.Engine) {
-	v1 := r.Group("/api/v1/subscriptions")
-	{
-		v1.POST("", h.Create)
-		v1.GET("/:id", h.GetByID)
-		v1.PUT("/:id", h.Update)
-		v1.DELETE("/:id", h.Delete)
-		v1.GET("", h.List)
-		v1.GET("/total", h.TotalCostForPeriod)
-	}
 }
 
 // @Summary Создать подписку
@@ -44,7 +41,7 @@ func (h *SubscriptionHandler) Create(c *gin.Context) {
 	req := dto.CreateSubscriptionRequest{}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Warn("invalid create request", zap.Error(err))
-		JSONError(c, errors2.ErrInvalidInput)
+		JSONError(c, domainerrors.ErrInvalidInput)
 		return
 	}
 
@@ -70,7 +67,7 @@ func (h *SubscriptionHandler) GetByID(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		h.logger.Warn("invalid id param", zap.Error(err))
-		JSONError(c, errors2.ErrInvalidInput)
+		JSONError(c, domainerrors.ErrInvalidInput)
 		return
 	}
 
@@ -98,14 +95,14 @@ func (h *SubscriptionHandler) Update(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		h.logger.Warn("invalid id param", zap.Error(err))
-		JSONError(c, errors2.ErrInvalidInput)
+		JSONError(c, domainerrors.ErrInvalidInput)
 		return
 	}
 
 	req := dto.UpdateSubscriptionRequest{}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Warn("invalid update request", zap.Error(err))
-		JSONError(c, errors2.ErrInvalidInput)
+		JSONError(c, domainerrors.ErrInvalidInput)
 		return
 	}
 
@@ -130,7 +127,7 @@ func (h *SubscriptionHandler) Delete(c *gin.Context) {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		h.logger.Warn("invalid id param", zap.Error(err))
-		JSONError(c, errors2.ErrInvalidInput)
+		JSONError(c, domainerrors.ErrInvalidInput)
 		return
 	}
 
@@ -155,7 +152,7 @@ func (h *SubscriptionHandler) List(c *gin.Context) {
 	filter := dto.SubscriptionFilterRequest{}
 	if err := c.ShouldBindQuery(&filter); err != nil {
 		h.logger.Warn("invalid filter params", zap.Error(err))
-		JSONError(c, errors2.ErrInvalidInput)
+		JSONError(c, domainerrors.ErrInvalidInput)
 		return
 	}
 
@@ -183,19 +180,19 @@ func (h *SubscriptionHandler) TotalCostForPeriod(c *gin.Context) {
 	req := dto.TotalCostRequest{}
 	if err := c.ShouldBindQuery(&req); err != nil {
 		h.logger.Warn("invalid total cost params", zap.Error(err))
-		JSONError(c, errors2.ErrInvalidInput)
+		JSONError(c, domainerrors.ErrInvalidInput)
 		return
 	}
 
 	if req.PeriodStart == nil || req.PeriodEnd == nil {
 		h.logger.Warn("missing required period dates")
-		JSONError(c, errors2.ErrInvalidInput)
+		JSONError(c, domainerrors.ErrInvalidInput)
 		return
 	}
 
 	if req.PeriodEnd.Before(*req.PeriodStart) {
 		h.logger.Warn("period end before period start")
-		JSONError(c, errors2.ErrInvalidInput)
+		JSONError(c, domainerrors.ErrInvalidInput)
 		return
 	}
 

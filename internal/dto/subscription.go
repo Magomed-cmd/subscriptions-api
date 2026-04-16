@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"subscriptions-api/internal/domain/entity"
-	errors2 "subscriptions-api/internal/domain/errors"
+	domainerrors "subscriptions-api/internal/domain/errors"
 
 	"github.com/google/uuid"
 )
@@ -50,11 +50,11 @@ type SubscriptionFilterRequest struct {
 
 func ToEntitySubscription(req *CreateSubscriptionRequest) (*entity.Subscription, error) {
 	if req == nil {
-		return nil, errors2.ErrInvalidInput
+		return nil, domainerrors.ErrInvalidInput
 	}
 	userID, err := uuid.Parse(req.UserID)
 	if err != nil {
-		return nil, errors2.ErrInvalidInput
+		return nil, domainerrors.ErrInvalidInput
 	}
 
 	return &entity.Subscription{
@@ -93,7 +93,7 @@ func ToEntityFilter(req *SubscriptionFilterRequest) (*entity.SubscriptionFilter,
 	if req.UserID != nil {
 		uid, err := uuid.Parse(*req.UserID)
 		if err != nil {
-			return nil, errors2.ErrInvalidInput
+			return nil, domainerrors.ErrInvalidInput
 		}
 		filter.UserID = &uid
 	}
@@ -126,7 +126,7 @@ func ToEntityFilterTotalCost(req *TotalCostRequest) (*entity.SubscriptionFilter,
 	if req.UserID != nil {
 		uid, err := uuid.Parse(*req.UserID)
 		if err != nil {
-			return nil, errors2.ErrInvalidInput
+			return nil, domainerrors.ErrInvalidInput
 		}
 		filter.UserID = &uid
 	}

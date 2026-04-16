@@ -3,7 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
-	errors2 "subscriptions-api/internal/domain/errors"
+	domainerrors "subscriptions-api/internal/domain/errors"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,23 +22,23 @@ func mapErrorToResponse(err error) (int, string) {
 	case err == nil:
 		return http.StatusOK, ""
 
-	case errors.Is(err, errors2.ErrNotFound):
+	case errors.Is(err, domainerrors.ErrNotFound):
 		return http.StatusNotFound, "resource not found"
 
-	case errors.Is(err, errors2.ErrInvalidInput),
-		errors.Is(err, errors2.ErrInvalidArgument),
-		errors.Is(err, errors2.ErrNullViolation),
-		errors.Is(err, errors2.ErrCheckViolation),
-		errors.Is(err, errors2.ErrInvalidUUID),
-		errors.Is(err, errors2.ErrInvalidDateFormat),
-		errors.Is(err, errors2.ErrForeignKeyViolation),
-		errors.Is(err, errors2.ErrNothingToUpdate):
+	case errors.Is(err, domainerrors.ErrInvalidInput),
+		errors.Is(err, domainerrors.ErrInvalidArgument),
+		errors.Is(err, domainerrors.ErrNullViolation),
+		errors.Is(err, domainerrors.ErrCheckViolation),
+		errors.Is(err, domainerrors.ErrInvalidUUID),
+		errors.Is(err, domainerrors.ErrInvalidDateFormat),
+		errors.Is(err, domainerrors.ErrForeignKeyViolation),
+		errors.Is(err, domainerrors.ErrNothingToUpdate):
 		return http.StatusBadRequest, "invalid request data"
 
-	case errors.Is(err, errors2.ErrDuplicate):
+	case errors.Is(err, domainerrors.ErrDuplicate):
 		return http.StatusConflict, "duplicate record"
 
-	case errors.Is(err, errors2.ErrInternal):
+	case errors.Is(err, domainerrors.ErrInternal):
 		return http.StatusInternalServerError, "internal server error"
 
 	default:

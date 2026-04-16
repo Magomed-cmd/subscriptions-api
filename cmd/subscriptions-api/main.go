@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	_ "subscriptions-api/docs"
+	_ "subscriptions-api/docs/swagger"
 	"subscriptions-api/internal/config"
 	"subscriptions-api/internal/db/postgres"
 	"subscriptions-api/internal/handler"

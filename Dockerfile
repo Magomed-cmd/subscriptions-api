@@ -7,8 +7,7 @@ RUN go mod download
 
 COPY . .
 
-RUN echo "Building for architecture: arm64" && \
-    CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+RUN CGO_ENABLED=0 GOOS=linux \
     go build -trimpath -ldflags="-s -w" -o /app/subscriptions-api ./cmd/subscriptions-api
 
 FROM alpine:3.20

@@ -1,4 +1,7 @@
-DB_URL=postgres://postgres:postgres123@localhost:5433/subscriptions_db?sslmode=disable
+include .env
+export
+
+DB_URL=postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:$(POSTGRES_PORT)/$(POSTGRES_DB)?sslmode=disable
 MIGRATE_CMD=migrate -path migrations -database "$(DB_URL)"
 
 run:
@@ -6,6 +9,12 @@ run:
 
 build:
 	go build -o subscriptions-api cmd/subscriptions-api/main.go
+
+fmt:
+	go fmt ./...
+
+vet:
+	go vet ./...
 
 migrate-create:
 	@read -p "Enter migration name: " name; \
@@ -24,9 +33,9 @@ migrate-version:
 	$(MIGRATE_CMD) version
 
 docker-run:
-	docker-compose down -v
-	docker-compose build --no-cache
-	docker-compose up
+	docker compose down -v
+	docker compose build --no-cache
+	docker compose up
 
 generate-swagger:
-	swag init -g cmd/subscriptions-api/main.go
+	swag init -g cmd/subscriptions-api/main.go -o docs/swagger

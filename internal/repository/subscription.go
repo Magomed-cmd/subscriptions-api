@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"subscriptions-api/internal/domain/entity"
-	errors2 "subscriptions-api/internal/domain/errors"
+	domainerrors "subscriptions-api/internal/domain/errors"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -43,13 +43,13 @@ func (r *SubscriptionRepository) Create(ctx context.Context, sub *entity.Subscri
 		sub.StartDate,
 		sub.EndDate,
 	).Scan(&id); err != nil {
-		mapped := errors2.MapPgError(err)
+		mapped := domainerrors.MapPgError(err)
 		if !errors.Is(mapped, err) {
 			r.logger.Warn("pg error mapped", zap.Error(mapped))
 			return 0, mapped
 		}
 		r.logger.Error("failed to insert subscription", zap.Error(err))
-		return 0, errors2.ErrInternal
+		return 0, domainerrors.ErrInternal
 	}
 
 	return id, nil
@@ -74,17 +74,17 @@ func (r *SubscriptionRepository) GetByID(ctx context.Context, id int64) (*entity
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			r.logger.Warn("subscription not found", zap.Int64("id", id))
-			return nil, errors2.ErrNotFound
+			return nil, domainerrors.ErrNotFound
 		}
 
-		mapped := errors2.MapPgError(err)
+		mapped := domainerrors.MapPgError(err)
 		if !errors.Is(mapped, err) {
 			r.logger.Warn("pg error mapped", zap.Error(mapped))
 			return nil, mapped
 		}
 
 		r.logger.Error("failed to get subscription", zap.Error(err))
-		return nil, errors2.ErrInternal
+		return nil, domainerrors.ErrInternal
 	}
 
 	return &sub, nil
@@ -109,18 +109,18 @@ func (r *SubscriptionRepository) Update(ctx context.Context, sub *entity.Subscri
 		sub.ID,
 	)
 	if err != nil {
-		mapped := errors2.MapPgError(err)
+		mapped := domainerrors.MapPgError(err)
 		if !errors.Is(mapped, err) {
 			r.logger.Warn("pg error mapped", zap.Error(mapped))
 			return mapped
 		}
 		r.logger.Error("failed to update subscription", zap.Error(err))
-		return errors2.ErrInternal
+		return domainerrors.ErrInternal
 	}
 
 	if cmd.RowsAffected() == 0 {
 		r.logger.Warn("subscription not found for update", zap.Int64("id", sub.ID))
-		return errors2.ErrNotFound
+		return domainerrors.ErrNotFound
 	}
 	r.logger.Info("subscription updated successfully", zap.Int64("id", sub.ID))
 
@@ -134,19 +134,19 @@ func (r *SubscriptionRepository) Delete(ctx context.Context, id int64) error {
 
 	cmd, err := r.db.Exec(ctx, query, id)
 	if err != nil {
-		mapped := errors2.MapPgError(err)
+		mapped := domainerrors.MapPgError(err)
 		if !errors.Is(mapped, err) {
 			r.logger.Warn("pg error mapped", zap.Error(mapped))
 			return mapped
 		}
 
 		r.logger.Error("failed to delete subscription", zap.Error(err))
-		return errors2.ErrInternal
+		return domainerrors.ErrInternal
 	}
 
 	if cmd.RowsAffected() == 0 {
 		r.logger.Warn("subscription not found for delete", zap.Int64("id", id))
-		return errors2.ErrNotFound
+		return domainerrors.ErrNotFound
 	}
 
 	r.logger.Info("subscription deleted successfully", zap.Int64("id", id))
@@ -164,18 +164,18 @@ func (r *SubscriptionRepository) List(ctx context.Context, filters *entity.Subsc
 	sql, args, err := query.ToSql()
 	if err != nil {
 		r.logger.Error("failed to build list query", zap.Error(err))
-		return nil, errors2.ErrInternal
+		return nil, domainerrors.ErrInternal
 	}
 
 	rows, err := r.db.Query(ctx, sql, args...)
 	if err != nil {
-		mapped := errors2.MapPgError(err)
+		mapped := domainerrors.MapPgError(err)
 		if !errors.Is(mapped, err) {
 			r.logger.Warn("pg error mapped", zap.Error(mapped))
 			return nil, mapped
 		}
 		r.logger.Error("failed to query subscriptions", zap.Error(err))
-		return nil, errors2.ErrInternal
+		return nil, domainerrors.ErrInternal
 	}
 	defer rows.Close()
 
@@ -187,14 +187,14 @@ func (r *SubscriptionRepository) List(ctx context.Context, filters *entity.Subsc
 			&s.StartDate, &s.EndDate, &s.CreatedAt, &s.UpdatedAt,
 		); err != nil {
 			r.logger.Error("failed to scan subscription row", zap.Error(err))
-			return nil, errors2.ErrInternal
+			return nil, domainerrors.ErrInternal
 		}
 		subs = append(subs, s)
 	}
 
 	if rows.Err() != nil {
 		r.logger.Error("rows iteration error", zap.Error(rows.Err()))
-		return nil, errors2.ErrInternal
+		return nil, domainerrors.ErrInternal
 	}
 
 	r.logger.Info("subscriptions listed successfully", zap.Int("count", len(subs)))
@@ -210,20 +210,20 @@ func (r *SubscriptionRepository) TotalAmount(ctx context.Context, filters *entit
 	sql, args, err := query.ToSql()
 	if err != nil {
 		r.logger.Error("failed to build total amount query", zap.Error(err))
-		return 0, errors2.ErrInternal
+		return 0, domainerrors.ErrInternal
 	}
 
 	r.logger.Debug("Executing SQL", zap.String("sql", sql), zap.Any("args", args))
 
 	var total int64
 	if err := r.db.QueryRow(ctx, sql, args...).Scan(&total); err != nil {
-		mapped := errors2.MapPgError(err)
+		mapped := domainerrors.MapPgError(err)
 		if !errors.Is(mapped, err) {
 			r.logger.Warn("pg error mapped", zap.Error(mapped))
 			return 0, mapped
 		}
 		r.logger.Error("failed to calculate total amount", zap.Error(err))
-		return 0, errors2.ErrInternal
+		return 0, domainerrors.ErrInternal
 	}
 
 	r.logger.Info("total amount calculated", zap.Int64("total", total))
@@ -247,9 +247,9 @@ func applySubscriptionFilters(query squirrel.SelectBuilder, f *entity.Subscripti
 			squirrel.GtOrEq{"end_date": *f.StartDate},
 		})
 	} else if f.StartDate != nil {
-		query = query.Where(squirrel.LtOrEq{"start_date": *f.EndDate})
+		query = query.Where(squirrel.GtOrEq{"start_date": *f.StartDate})
 	} else if f.EndDate != nil {
-		query = query.Where(squirrel.GtOrEq{"end_date": *f.StartDate})
+		query = query.Where(squirrel.LtOrEq{"end_date": *f.EndDate})
 	}
 
 	return query

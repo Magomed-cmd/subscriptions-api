@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"subscriptions-api/internal/domain/entity"
-	errors2 "subscriptions-api/internal/domain/errors"
+	domainerrors "subscriptions-api/internal/domain/errors"
 	"subscriptions-api/internal/dto"
 	"time"
 
@@ -38,12 +38,12 @@ func (s *SubscriptionService) Create(ctx context.Context, req *dto.CreateSubscri
 	sub, err := dto.ToEntitySubscription(req)
 	if err != nil {
 		s.logger.Warn("Invalid input DTO", zap.Error(err))
-		return nil, errors2.ErrInvalidInput
+		return nil, domainerrors.ErrInvalidInput
 	}
 
 	if sub.ServiceName == "" || sub.Price <= 0 || sub.UserID == uuid.Nil {
 		s.logger.Warn("Validation failed before create")
-		return nil, errors2.ErrInvalidInput
+		return nil, domainerrors.ErrInvalidInput
 	}
 
 	id, err := s.repo.Create(ctx, sub)
@@ -61,7 +61,7 @@ func (s *SubscriptionService) GetByID(ctx context.Context, id int64) (*dto.Subsc
 	s.logger.Info("Getting subscription", zap.Int64("id", id))
 
 	if id <= 0 {
-		return nil, errors2.ErrInvalidInput
+		return nil, domainerrors.ErrInvalidInput
 	}
 
 	sub, err := s.repo.GetByID(ctx, id)
@@ -77,11 +77,11 @@ func (s *SubscriptionService) Update(ctx context.Context, id int64, req *dto.Upd
 	s.logger.Info("Updating subscription", zap.Int64("id", id))
 
 	if id <= 0 {
-		return nil, errors2.ErrInvalidInput
+		return nil, domainerrors.ErrInvalidInput
 	}
 
 	if req.ServiceName == nil && req.Price == nil && req.EndDate == nil {
-		return nil, errors2.ErrNothingToUpdate
+		return nil, domainerrors.ErrNothingToUpdate
 	}
 
 	existing, err := s.repo.GetByID(ctx, id)
@@ -113,7 +113,7 @@ func (s *SubscriptionService) Delete(ctx context.Context, id int64) error {
 	s.logger.Info("Deleting subscription", zap.Int64("id", id))
 
 	if id <= 0 {
-		return errors2.ErrInvalidInput
+		return domainerrors.ErrInvalidInput
 	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -131,7 +131,7 @@ func (s *SubscriptionService) List(ctx context.Context, filterReq *dto.Subscript
 	filter, err := dto.ToEntityFilter(filterReq)
 	if err != nil {
 		s.logger.Warn("Invalid filter DTO", zap.Error(err))
-		return nil, errors2.ErrInvalidInput
+		return nil, domainerrors.ErrInvalidInput
 	}
 
 	subs, err := s.repo.List(ctx, filter)
@@ -156,16 +156,16 @@ func (s *SubscriptionService) TotalCostForPeriod(ctx context.Context, req *dto.T
 	
 	if req.PeriodStart == nil || req.PeriodEnd == nil {
 		s.logger.Warn("missing required period dates")
-		return 0, errors2.ErrInvalidInput
+		return 0, domainerrors.ErrInvalidInput
 	}
 
 	if req.PeriodEnd.Before(*req.PeriodStart) {
-		return 0, errors2.ErrInvalidInput
+		return 0, domainerrors.ErrInvalidInput
 	}
 
 	filter, err := dto.ToEntityFilterTotalCost(req)
 	if err != nil {
-		return 0, errors2.ErrInvalidInput
+		return 0, domainerrors.ErrInvalidInput
 	}
 
 	total, err := s.repo.TotalAmount(ctx, filter)
